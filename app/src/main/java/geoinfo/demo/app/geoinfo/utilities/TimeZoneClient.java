@@ -7,8 +7,6 @@ import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
 
-import java.sql.Time;
-
 /**
  * Created by david on 28/07/2015.
  */

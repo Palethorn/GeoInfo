@@ -16,6 +16,8 @@ import android.os.Bundle;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.loopj.android.http.AsyncHttpResponseHandler;
@@ -41,7 +43,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private Location current_location;
     private String provider;
     private ProgressDialog pd;
-
+    private Marker current_location_marker;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -51,7 +53,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         pd.setCanceledOnTouchOutside(false);
         cities = new HashMap<>();
         initMap();
-        initLocation();
     }
 
     private void initLocation() {
@@ -59,7 +60,33 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         Criteria criteria = new Criteria();
         provider = locationManager.getBestProvider(criteria, false);
         current_location = locationManager.getLastKnownLocation(provider);
+        if(map != null && current_location != null) {
+            current_location_marker = map.addMarker(
+                    new MarkerOptions()
+                            .title("Current location")
+                            .position(new LatLng(current_location.getLatitude(), current_location.getLongitude()))
+            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+            updateCurrentLocation();
+        }
         locationManager.requestLocationUpdates(provider, 5000, 1, this);
+    }
+
+    public void updateCurrentLocation() {
+        current_location_marker.setPosition(new LatLng(current_location.getLatitude(), current_location.getLongitude()));
+        Geocoder gc = new Geocoder(this);
+        City c = new City();
+        try {
+            List<Address> res = gc.getFromLocation(current_location.getLatitude(), current_location.getLongitude(), 1);
+            c.setCountryName(res.get(0).getCountryName());
+            c.setName(res.get(0).getLocality());
+            c.setCountryCode(res.get(0).getCountryCode());
+            c.setId(c.getName());
+            c.setGeoPosition(new LatLng(current_location.getLatitude(), current_location.getLongitude()));
+            cities.put(c.getName(), c);
+            current_location_marker.setTitle(c.getId());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -78,7 +105,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private void setUpMap() {
         pd.setTitle("Retrieving city list");
         pd.setMessage("Please wait...");
-        pd.show();
+        //pd.show();
         CityListClient clc = new CityListClient();
         clc.get(new AsyncHttpResponseHandler() {
             @Override
@@ -93,6 +120,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
             }
         });
+        initLocation();
     }
 
     @Override
@@ -119,6 +147,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onLocationChanged(Location location) {
         current_location = location;
+        updateCurrentLocation();
     }
 
     @Override
