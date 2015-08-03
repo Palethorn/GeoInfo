@@ -1,16 +1,19 @@
 package geoinfo.demo.app.geoinfo.models;
 
+import android.graphics.Bitmap;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Calendar;
 import java.util.Date;
 
 /**
  * Created by david on 30/07/2015.
  */
 public class Weather {
-    private Date date;
+    private Calendar date;
     private double day_temp;
     private double min_temp;
     private double max_temp;
@@ -22,12 +25,20 @@ public class Weather {
     private String status;
     private String description;
     private String icon;
+    private Bitmap icon_bitmap;
+    private String tag;
 
-    public Date getDate() {
+    private Boolean image_download_lock;
+
+    public Weather() {
+        image_download_lock = false;
+    }
+
+    public Calendar getDate() {
         return date;
     }
 
-    public void setDate(Date date) {
+    public void setDate(Calendar date) {
         this.date = date;
     }
 
@@ -122,7 +133,8 @@ public class Weather {
     public void importFromJsonObject(JSONObject o) {
         try {
             int dt = o.getInt("dt");
-            date = new Date(dt * 1000);
+            date = Calendar.getInstance();
+            date.setTimeInMillis(dt * 1000);
             if(o.has("pressure")) {
                 pressure = o.getDouble("pressure");
             }
@@ -157,5 +169,29 @@ public class Weather {
         } catch (JSONException e) {
             e.printStackTrace();
         }
+    }
+
+    public String getTag() {
+        return tag;
+    }
+
+    public void setTag(String tag) {
+        this.tag = tag;
+    }
+
+    public Bitmap getIconBitmap() {
+        return icon_bitmap;
+    }
+
+    public void setIconBitmap(Bitmap icon_bitmap) {
+        this.icon_bitmap = icon_bitmap;
+    }
+
+    public Boolean getImageDownloadLock() {
+        return image_download_lock;
+    }
+
+    public void setImageDownloadLock(Boolean image_download_lock) {
+        this.image_download_lock = image_download_lock;
     }
 }

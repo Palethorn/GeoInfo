@@ -1,16 +1,22 @@
 package geoinfo.demo.app.geoinfo.activities;
 import android.app.ProgressDialog;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.app.FragmentManager;
+import android.support.v4.widget.DrawerLayout;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.CalendarView;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -22,15 +28,20 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.w3c.dom.Text;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 
 import geoinfo.demo.app.geoinfo.R;
+import geoinfo.demo.app.geoinfo.adapters.ForecastAdapter;
 import geoinfo.demo.app.geoinfo.models.City;
 import geoinfo.demo.app.geoinfo.models.Weather;
 import geoinfo.demo.app.geoinfo.utilities.ForecastClient;
 import geoinfo.demo.app.geoinfo.utilities.TimeZoneClient;
 import geoinfo.demo.app.geoinfo.utilities.WeatherClient;
+import geoinfo.demo.app.geoinfo.utilities.WeatherStatusIconClient;
 
 public class CityInfoActivity extends FragmentActivity {
     public static final String TAG = "CityInfoActivity";
@@ -39,6 +50,7 @@ public class CityInfoActivity extends FragmentActivity {
     float distance;
     FragmentManager fragmentManager;
     ListView left_drawer;
+    ImageView menu_btn;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -49,7 +61,7 @@ public class CityInfoActivity extends FragmentActivity {
         Double latitude = getIntent().getDoubleExtra("latitude", -1);
         Double longitude = getIntent().getDoubleExtra("longitude", -1);
         float[] results = new float[1];
-        if (latitude != -1 || longitude != -1) {
+        if (latitude != -1 && longitude != -1 && city != null) {
             Location.distanceBetween(latitude, longitude, city.getGeoPosition().latitude, city.getGeoPosition().longitude, results);
         }
         distance = results[0];
@@ -69,6 +81,17 @@ public class CityInfoActivity extends FragmentActivity {
                         .beginTransaction()
                         .replace(R.id.fragment_frame_layout, fragments.get(position))
                         .commit();
+                DrawerLayout dl = (DrawerLayout)findViewById(R.id.drawer_layout);
+                dl.closeDrawer(Gravity.LEFT);
+            }
+        });
+
+        menu_btn = (ImageView)findViewById(R.id.menu_btn);
+        menu_btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                DrawerLayout dl = (DrawerLayout)findViewById(R.id.drawer_layout);
+                dl.openDrawer(Gravity.LEFT);
             }
         });
     }
@@ -161,6 +184,8 @@ public class CityInfoActivity extends FragmentActivity {
         private City city;
         private List<Weather> forecast;
         private Weather current_weather;
+        private static int no_of_jobs = 0;
+        private ListView forecast_list_view;
         @Override
         public View onCreateView(LayoutInflater inflater,
                                  ViewGroup container, Bundle savedInstanceState) {
@@ -168,22 +193,34 @@ public class CityInfoActivity extends FragmentActivity {
             View rootView = inflater.inflate(
                     R.layout.layout_weather_info, container, false);
             forecast = new ArrayList<>();
+            mapViews(rootView);
             updateInfo();
             return rootView;
         }
 
+        public void mapViews(View rootView) {
+            forecast_list_view = (ListView)rootView.findViewById(R.id.weather_list);
+        }
+
         public void updateInfo() {
             ForecastClient fc = new ForecastClient();
+            no_of_jobs = 2;
             fc.get(city, 6, new AsyncHttpResponseHandler() {
                 @Override
                 public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
                     try {
+                        SimpleDateFormat sdf = new SimpleDateFormat("EEEE", Locale.getDefault());
                         JSONObject json = new JSONObject(new String(responseBody));
                         JSONArray array = json.getJSONArray("list");
                         for(int i = 1; i < array.length(); i++) {
                             Weather w = new Weather();
                             w.importFromJsonObject(array.getJSONObject(i));
+                            w.setTag(sdf.format(w.getDate().getTime()));
                             forecast.add(w);
+                            no_of_jobs--;
+                            if(no_of_jobs == 0) {
+                                createWeatherList();
+                            }
                         }
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -204,7 +241,12 @@ public class CityInfoActivity extends FragmentActivity {
                         JSONObject json = new JSONObject(new String(responseBody));
                         current_weather = new Weather();
                         current_weather.importFromJsonObject(json);
+                        current_weather.setTag("Today");
                         forecast.add(0, current_weather);
+                        no_of_jobs--;
+                        if (no_of_jobs == 0) {
+                            createWeatherList();
+                        }
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
@@ -215,6 +257,11 @@ public class CityInfoActivity extends FragmentActivity {
 
                 }
             });
+        }
+
+        public void createWeatherList() {
+            ForecastAdapter fa = new ForecastAdapter(getActivity(), R.layout.weather_item_layout, forecast);
+            forecast_list_view.setAdapter(fa);
         }
     }
 

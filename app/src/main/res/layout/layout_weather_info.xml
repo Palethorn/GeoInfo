@@ -5,7 +5,7 @@
     android:choiceMode="singleChoice"
     android:divider="@android:color/darker_gray"
     android:dividerHeight="1dp"
-    android:id="@+id/left_drawer"
+    android:id="@+id/weather_list"
     android:layout_height="match_parent"
     android:layout_width="match_parent">
 </ListView>

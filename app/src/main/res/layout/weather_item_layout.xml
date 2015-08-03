@@ -1,19 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:id="@+id/weather_item_layout"
               android:orientation="vertical"
               android:layout_width="match_parent"
               android:layout_height="match_parent">
-    <ImageView
-        android:id="@+id/weather_icon"
-        android:layout_width="50dp"
-        android:layout_height="50dp"/>
     <TextView
-        android:id="@+id/weather_status"
+        android:textSize="24sp"
+        android:id="@+id/forecast_day_tag"
         android:layout_width="match_parent"
         android:layout_height="50dp"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:orientation="horizontal"
+        android:layout_height="50dp">
+        <ImageView
+            android:id="@+id/weather_icon"
+            android:layout_width="50dp"
+            android:layout_height="50dp"/>
+        <TextView
+            android:textColor="#32ceff"
+            android:textSize="16sp"
+            android:id="@+id/weather_status"
+            android:layout_width="match_parent"
+            android:gravity="center_vertical"
+            android:layout_height="50dp"/>
+    </LinearLayout>
     <TextView
         android:id="@+id/temperature"
         android:layout_width="match_parent"
+        android:textSize="16sp"
+        android:layout_marginLeft="10dp"
+        android:layout_marginStart="10dp"
         android:layout_height="50dp"/>
 
 </LinearLayout>

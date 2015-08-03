@@ -8,6 +8,16 @@
                   android:layout_width="match_parent"
                   android:layout_height="match_parent"
                   android:orientation="vertical">
+        <RelativeLayout
+            android:background="@android:color/holo_orange_dark"
+            android:layout_width="match_parent"
+            android:layout_height="50dp">
+            <ImageView
+                android:src="@drawable/menu"
+                android:id="@+id/menu_btn"
+                android:layout_width="50dp"
+                android:layout_height="50dp"/>
+        </RelativeLayout>
 
         <FrameLayout
             android:id="@+id/fragment_frame_layout"
