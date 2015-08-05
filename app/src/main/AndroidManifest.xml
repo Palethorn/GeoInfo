@@ -29,6 +29,7 @@
 
         <activity
             android:name=".activities.MainActivity"
+            android:screenOrientation="landscape"
             android:label="@string/title_activity_main" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -36,6 +37,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <service android:name=".services.GeoInfoService" />
         <activity
             android:name=".activities.CityInfoActivity"
             android:label="@string/title_activity_city_info" >

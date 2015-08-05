@@ -18,6 +18,7 @@ public class City implements Parcelable {
     private String id;
     private String country_name;
     private String country_code;
+    private String timezone;
     public City() {
     }
 
@@ -115,5 +116,13 @@ public class City implements Parcelable {
 
     public void setCountryCode(String country_code) {
         this.country_code = country_code;
+    }
+
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
     }
 }

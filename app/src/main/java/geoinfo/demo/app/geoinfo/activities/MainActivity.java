@@ -1,15 +1,10 @@
 package geoinfo.demo.app.geoinfo.activities;
 
 import android.app.ProgressDialog;
-import android.content.Context;
+import android.content.ComponentName;
 import android.content.Intent;
-import android.location.Address;
-import android.location.Criteria;
-import android.location.Geocoder;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
-import android.os.AsyncTask;
+import android.content.ServiceConnection;
+import android.os.IBinder;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 
@@ -20,30 +15,22 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.loopj.android.http.AsyncHttpResponseHandler;
 
-import org.apache.http.Header;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
 
 import geoinfo.demo.app.geoinfo.R;
+import geoinfo.demo.app.geoinfo.listeners.CityListAvailableListener;
+import geoinfo.demo.app.geoinfo.listeners.ProgressUpdateListener;
 import geoinfo.demo.app.geoinfo.models.City;
-import geoinfo.demo.app.geoinfo.utilities.CityListClient;
+import geoinfo.demo.app.geoinfo.services.GeoInfoService;
 
-public class MainActivity extends FragmentActivity implements OnMapReadyCallback, LocationListener {
+public class MainActivity extends FragmentActivity implements OnMapReadyCallback {
     public static final String TAG = "MainActivity";
     private GoogleMap map;
-    private HashMap<String, City> cities;
-    private Location current_location;
-    private String provider;
     private ProgressDialog pd;
     private Marker current_location_marker;
+    GeoInfoService gis;
+    GeoInfoServiceConnection gisc;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -51,76 +38,39 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         pd = new ProgressDialog(this);
         pd.setCancelable(false);
         pd.setCanceledOnTouchOutside(false);
-        cities = new HashMap<>();
-        initMap();
+        gisc = new GeoInfoServiceConnection();
+
+        if(!GeoInfoService.isRunning()) {
+            Intent i = new Intent(this, GeoInfoService.class);
+            startService(i);
+        }
     }
 
-    private void initLocation() {
-        LocationManager locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
-        Criteria criteria = new Criteria();
-        provider = locationManager.getBestProvider(criteria, false);
-        current_location = locationManager.getLastKnownLocation(provider);
-        if(map != null && current_location != null) {
+    private void updateCurrentLocation() {
+        if(map != null && gis.getCurrentLocation() != null) {
             current_location_marker = map.addMarker(
                     new MarkerOptions()
                             .title("Current location")
-                            .position(new LatLng(current_location.getLatitude(), current_location.getLongitude()))
+                            .position(new LatLng(gis.getCurrentLocation().getLatitude(), gis.getCurrentLocation().getLongitude()))
             .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
-            updateCurrentLocation();
-        }
-        locationManager.requestLocationUpdates(provider, 5000, 1, this);
-    }
-
-    public void updateCurrentLocation() {
-        current_location_marker.setPosition(new LatLng(current_location.getLatitude(), current_location.getLongitude()));
-        Geocoder gc = new Geocoder(this);
-        City c = new City();
-        try {
-            List<Address> res = gc.getFromLocation(current_location.getLatitude(), current_location.getLongitude(), 1);
-            c.setCountryName(res.get(0).getCountryName());
-            c.setName(res.get(0).getLocality());
-            c.setCountryCode(res.get(0).getCountryCode());
-            c.setId(c.getName());
-            c.setGeoPosition(new LatLng(current_location.getLatitude(), current_location.getLongitude()));
-            cities.put(c.getName(), c);
-            current_location_marker.setTitle(c.getId());
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        initMap();
+        pd.setMessage("Please wait...");
+        pd.show();
+        bindService(new Intent(this, GeoInfoService.class), gisc, 0);
     }
 
     private void initMap() {
         if (map == null) {
             ((SupportMapFragment)getSupportFragmentManager().findFragmentById(R.id.map))
                     .getMapAsync(this);
+        } else {
+            pd.dismiss();
         }
-    }
-
-    private void setUpMap() {
-        pd.setTitle("Retrieving city list");
-        pd.setMessage("Please wait...");
-        //pd.show();
-        CityListClient clc = new CityListClient();
-        clc.get(new AsyncHttpResponseHandler() {
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
-                String result = new String(responseBody);
-                ParseCitiesAsyncTask pcat = new ParseCitiesAsyncTask();
-                pcat.execute(result);
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-
-            }
-        });
-        initLocation();
     }
 
     @Override
@@ -131,81 +81,65 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 @Override
                 public boolean onMarkerClick(Marker marker) {
                     Intent intent = new Intent(getApplicationContext(), CityInfoActivity.class);
-                    intent.putExtra("city", cities.get(marker.getTitle()));
-                    if(current_location != null) {
-                        intent.putExtra("latitude", current_location.getLatitude());
-                        intent.putExtra("longitude", current_location.getLongitude());
+                    intent.putExtra("city", gis.getCities().get(marker.getTitle()));
+                    if(gis.getCurrentLocation() != null) {
+                        intent.putExtra("latitude", gis.getCurrentLocation().getLatitude());
+                        intent.putExtra("longitude", gis.getCurrentLocation().getLongitude());
                     }
                     startActivity(intent);
                     return true;
                 }
             });
-            setUpMap();
-        }
-    }
 
-    @Override
-    public void onLocationChanged(Location location) {
-        current_location = location;
-        updateCurrentLocation();
-    }
-
-    @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {
-
-    }
-
-    @Override
-    public void onProviderEnabled(String provider) {
-
-    }
-
-    @Override
-    public void onProviderDisabled(String provider) {
-
-    }
-
-    class ParseCitiesAsyncTask extends AsyncTask<String, City, Void> {
-        public int progress_count = 0;
-        public int total = 0;
-        @Override
-        protected Void doInBackground(String... params) {
-            Geocoder gc = new Geocoder(MainActivity.this, Locale.getDefault());
-            try {
-                JSONObject json = new JSONObject(params[0]);
-                JSONArray array = json.getJSONArray("features");
-                total = array.length();
-                for (int i = 0; i < array.length(); i++) {
-                    JSONObject object = array.getJSONObject(i);
-                    City city = new City();
-                    city.importFromJsonObject(object);
-                    List<Address> addresses = gc.getFromLocation(city.getGeoPosition().latitude,
-                            city.getGeoPosition().longitude, 1);
-                    if (addresses.size() > 0) {
-                        city.setCountryName(addresses.get(0).getCountryName());
-                        city.setCountryCode(addresses.get(0).getCountryCode());
-                    }
-                    cities.put(city.getId(), city);
-                    publishProgress(city);
+            gis.retrieveCityList(new CityListAvailableListener() {
+                @Override
+                public void onList(HashMap<String, City> list) {
+                    initMarkers();
                 }
-            } catch (JSONException | IOException e) {
-                e.printStackTrace();
-            }
-            return null;
+            }, new ProgressUpdateListener() {
+                @Override
+                public void onProgress(Double... progress) {
+                    pd.setMessage("Found " + progress[0].intValue() + " of " + progress[1].intValue() + " cities");
+                }
+            });
+        }
+    }
+
+    public void initMarkers() {
+        map.clear();
+        for (String k: gis.getCities().keySet()) {
+            City c = gis.getCities().get(k);
+            map.addMarker(
+                    new MarkerOptions()
+                            .title(c.getId())
+                            .position(new LatLng(c.getGeoPosition().latitude, c.getGeoPosition().longitude)));
+        }
+        pd.dismiss();
+    }
+
+    public class GeoInfoServiceConnection implements ServiceConnection {
+
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            final GeoInfoService.GeoInfoServiceBinder binder = (GeoInfoService.GeoInfoServiceBinder)service;
+            gis = binder.getService();
+            initMap();
         }
 
         @Override
-        protected void onPostExecute(Void aVoid) {
-            pd.dismiss();
-        }
+        public void onServiceDisconnected(ComponentName name) {
 
-        @Override
-        protected void onProgressUpdate(City... values) {
-            progress_count++;
-            pd.setMessage("Found " + progress_count + " of " + total + " cities");
-            if (map != null) {
-                Marker m = map.addMarker(new MarkerOptions().position(values[0].getGeoPosition()).title(values[0].getId()));
-            }
         }
+    }
+
+    @Override
+    public void onPause() {
+        unbindService(gisc);
+        super.onPause();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
     }
 }
