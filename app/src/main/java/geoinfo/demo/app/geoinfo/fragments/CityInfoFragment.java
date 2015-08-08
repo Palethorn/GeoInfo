@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import geoinfo.demo.app.geoinfo.R;
 import geoinfo.demo.app.geoinfo.activities.CityInfoActivity;
@@ -66,6 +67,7 @@ public class CityInfoFragment extends Fragment {
                 CityInfoActivity cia = (CityInfoActivity)getActivity();
                 if (cia.getService() != null) {
                     cia.getService().setCurrentLocation(city.getGeoPosition());
+                    Toast.makeText(getActivity(), "Current location changed to " + city.getName(), Toast.LENGTH_SHORT).show();
                 }
             }
         });
