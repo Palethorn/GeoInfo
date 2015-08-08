@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">GeoInfo</string>
-    <string name="title_activity_main">Map</string>
+    <string name="title_activity_main">GeoInfo</string>
     <string name="title_activity_city_info">CityInfoActivity</string>
 
     <string name="hello_world">Hello world!</string>

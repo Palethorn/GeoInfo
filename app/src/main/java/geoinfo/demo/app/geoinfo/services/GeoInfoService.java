@@ -29,8 +29,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
+import geoinfo.demo.app.geoinfo.R;
 import geoinfo.demo.app.geoinfo.listeners.CityInfoAvailableListener;
 import geoinfo.demo.app.geoinfo.listeners.CityListAvailableListener;
+import geoinfo.demo.app.geoinfo.listeners.LocationChangedListener;
 import geoinfo.demo.app.geoinfo.listeners.ProgressUpdateListener;
 import geoinfo.demo.app.geoinfo.models.City;
 import geoinfo.demo.app.geoinfo.models.Weather;
@@ -53,6 +55,10 @@ public class GeoInfoService extends Service implements LocationListener {
     List<Weather> forecast;
     private int no_of_jobs;
     private boolean retrievingList;
+    private LocationChangedListener locationChangedListener;
+    LocationManager locationManager;
+    ParseCitiesAsyncTask parseCitiesAsyncTask;
+    CityListClient cityListClient;
 
     private HashMap<String, City> cities;
     private LatLng current_location;
@@ -65,32 +71,39 @@ public class GeoInfoService extends Service implements LocationListener {
         cities = new HashMap<>();
         instance = this;
 
-        LocationManager locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+        locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
         Criteria criteria = new Criteria();
         String provider = locationManager.getBestProvider(criteria, false);
         Location l = locationManager.getLastKnownLocation(provider);
-        current_location = new LatLng(l.getLatitude(), l.getLongitude());
-        locationManager.requestLocationUpdates(provider, 5000, 1, this);
+        if (l != null) {
+            setCurrentLocation(new LatLng(l.getLatitude(), l.getLongitude()));
+        } else {
+            locationManager.requestLocationUpdates(provider, 0, 0, this);
+        }
         retrievingList = false;
     }
 
     public void retrieveCityList(CityListAvailableListener cityListAvailableListener, ProgressUpdateListener progressUpdateListener) {
         this.cityListAvailableListener = cityListAvailableListener;
-        if(!cities.isEmpty() && !retrievingList) {
+        if (!cities.isEmpty() && !retrievingList) {
             if (cityListAvailableListener != null) {
                 cityListAvailableListener.onList(this.cities);
             }
             return;
         }
+        cities.clear();
         this.progressUpdateListener = progressUpdateListener;
         retrievingList = true;
-        CityListClient clc = new CityListClient();
-        clc.get(new AsyncHttpResponseHandler() {
+        cityListClient = new CityListClient();
+        cityListClient.get(new AsyncHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+                if(!retrievingList) {
+                    return;
+                }
                 String result = new String(responseBody);
-                ParseCitiesAsyncTask pcat = new ParseCitiesAsyncTask();
-                pcat.execute(result);
+                parseCitiesAsyncTask = new ParseCitiesAsyncTask();
+                parseCitiesAsyncTask.execute(result);
             }
 
             @Override
@@ -119,7 +132,7 @@ public class GeoInfoService extends Service implements LocationListener {
 
     @Override
     public void onLocationChanged(Location location) {
-        current_location = new LatLng(location.getLatitude(), location.getLongitude());
+        setCurrentLocation(new LatLng(location.getLatitude(), location.getLongitude()));
     }
 
     @Override
@@ -137,29 +150,21 @@ public class GeoInfoService extends Service implements LocationListener {
 
     }
 
-    public void updateCurrentLocation() {
-
-        Geocoder gc = new Geocoder(this);
-        City c = new City();
-        try {
-            List<Address> res = gc.getFromLocation(getCurrentLocation().latitude, getCurrentLocation().longitude, 1);
-            c.setCountryName(res.get(0).getCountryName());
-            c.setName(res.get(0).getLocality());
-            c.setCountryCode(res.get(0).getCountryCode());
-            c.setId(c.getName());
-            c.setGeoPosition(getCurrentLocation());
-            cities.put(c.getId(), c);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     public LatLng getCurrentLocation() {
         return current_location;
     }
 
+    public void setLocationChangedListener(LocationChangedListener listener) {
+        locationChangedListener = listener;
+    }
+
     public void setCurrentLocation(LatLng current_location) {
+        locationManager.removeUpdates(this);
         this.current_location = current_location;
+
+        if (locationChangedListener != null) {
+            locationChangedListener.locationChanged(current_location);
+        }
     }
 
     public class GeoInfoServiceBinder extends Binder {
@@ -175,7 +180,7 @@ public class GeoInfoService extends Service implements LocationListener {
 
     public void updateInfo(City city, CityInfoAvailableListener listener) {
         infoAvailableListener = listener;
-        if (this.city != null && this.city.getId() == city.getId()) {
+        if (this.city != null && this.city.getId().equals(city.getId())) {
             if (infoAvailableListener != null) {
                 infoAvailableListener.onInfo(this.city, this.forecast);
             }
@@ -188,25 +193,30 @@ public class GeoInfoService extends Service implements LocationListener {
         fc.get(city, 6, new AsyncHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+                SimpleDateFormat sdf = new SimpleDateFormat("EEEE", Locale.getDefault());
+                JSONArray array;
                 try {
-                    SimpleDateFormat sdf = new SimpleDateFormat("EEEE", Locale.getDefault());
                     JSONObject json = new JSONObject(new String(responseBody));
-                    JSONArray array = json.getJSONArray("list");
-                    for (int i = 1; i < array.length(); i++) {
-                        Weather w = new Weather();
-                        w.importFromJsonObject(array.getJSONObject(i));
-                        w.setTag(sdf.format(w.getDate().getTime()));
-                        forecast.add(w);
-                        checkJobs();
-                    }
+                    array = json.getJSONArray("list");
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    return;
                 }
+                for (int i = 1; i < array.length(); i++) {
+                    Weather w = new Weather();
+                    try {
+                        w.importFromJsonObject(array.getJSONObject(i));
+                    } catch (JSONException e) {
+                        continue;
+                    }
+                    w.setTag(sdf.format(w.getDate().getTime()));
+                    forecast.add(w);
+                }
+                checkJobs();
             }
 
             @Override
             public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-
+                checkJobs();
             }
         });
         WeatherClient wc = new WeatherClient();
@@ -219,18 +229,18 @@ public class GeoInfoService extends Service implements LocationListener {
                     current_weather.importFromJsonObject(json);
                     current_weather.setTag("Today");
                     forecast.add(0, current_weather);
-                    checkJobs();
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
+                checkJobs();
             }
 
             @Override
             public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-
+                checkJobs();
             }
         });
-
+        TimeZoneClient.KEY = getResources().getString(R.string.google_maps_key);
         TimeZoneClient tzc = new TimeZoneClient();
         tzc.get(city.getGeoPosition(), new AsyncHttpResponseHandler() {
             @Override
@@ -240,7 +250,7 @@ public class GeoInfoService extends Service implements LocationListener {
                     JSONObject object = new JSONObject(result);
                     int offset = object.getInt("rawOffset");
                     offset = offset / 60 / 60;
-                    GeoInfoService.this.city.setTimezone("GMT " + (offset < 0 ? "-" : "+") + String.valueOf(offset));
+                    GeoInfoService.this.city.setTimezone("GMT " + (offset < 0 ? "" : "+") + String.valueOf(offset));
                 } catch (JSONException e) {
                     GeoInfoService.this.city.setTimezone("Could not retrieve");
                     e.printStackTrace();
@@ -250,7 +260,7 @@ public class GeoInfoService extends Service implements LocationListener {
 
             @Override
             public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-
+                checkJobs();
             }
         });
     }
@@ -262,30 +272,56 @@ public class GeoInfoService extends Service implements LocationListener {
         }
     }
 
+    public void cancelCityListParsing() {
+        if(parseCitiesAsyncTask != null && !parseCitiesAsyncTask.isCancelled()) {
+            parseCitiesAsyncTask.cancel(true);
+        }
+        retrievingList = false;
+    }
+
     class ParseCitiesAsyncTask extends AsyncTask<String, Double, Void> {
         public int total = 0;
+
         @Override
         protected Void doInBackground(String... params) {
             Geocoder gc = new Geocoder(GeoInfoService.this, Locale.getDefault());
+            JSONObject json;
+            JSONArray array;
             try {
-                JSONObject json = new JSONObject(params[0]);
-                JSONArray array = json.getJSONArray("features");
-                total = array.length();
-                for (int i = 0; i < 100 /*array.length()*/; i++) {
-                    JSONObject object = array.getJSONObject(i);
-                    City city = new City();
-                    city.importFromJsonObject(object);
-                    List<Address> addresses = gc.getFromLocation(city.getGeoPosition().latitude,
-                            city.getGeoPosition().longitude, 1);
-                    if (addresses.size() > 0) {
-                        city.setCountryName(addresses.get(0).getCountryName());
-                        city.setCountryCode(addresses.get(0).getCountryCode());
-                    }
-                    cities.put(city.getId(), city);
-                    publishProgress((double)i, (double)total);
-                }
-            } catch (JSONException | IOException e) {
+                json = new JSONObject(params[0]);
+                array = json.getJSONArray("features");
+            } catch (JSONException e) {
                 e.printStackTrace();
+                return null;
+            }
+            total = array.length();
+            for (int i = 0; i < 100 /*array.length()*/; i++) {
+                if(isCancelled()) {
+                    return null;
+                }
+                JSONObject object;
+                try {
+                    object = array.getJSONObject(i);
+                } catch (JSONException e) {
+                    continue;
+                }
+                City city = new City();
+                city.importFromJsonObject(object);
+                List<Address> addresses = null;
+                try {
+                    addresses = gc.getFromLocation(city.getGeoPosition().latitude,
+                            city.getGeoPosition().longitude, 1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                if (addresses != null && addresses.size() > 0) {
+                    city.setCountryName(addresses.get(0).getCountryName());
+                    city.setCountryCode(addresses.get(0).getCountryCode());
+                }
+                if(!isCancelled()) {
+                    cities.put(city.getId(), city);
+                }
+                publishProgress((double)i, (double)total);
             }
             return null;
         }
@@ -298,9 +334,15 @@ public class GeoInfoService extends Service implements LocationListener {
 
         @Override
         protected void onProgressUpdate(Double... values) {
-            if(progressUpdateListener != null) {
+            if (progressUpdateListener != null) {
                 progressUpdateListener.onProgress(values);
             }
+        }
+
+        @Override
+        protected void onCancelled(Void aVoid) {
+            super.onCancelled(aVoid);
+            cities.clear();
         }
     }
 }

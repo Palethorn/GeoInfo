@@ -15,7 +15,6 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ListView;
 import java.util.ArrayList;
@@ -36,7 +35,6 @@ public class CityInfoActivity extends FragmentActivity {
     FragmentManager fragmentManager;
     ListView left_drawer;
     ImageView menu_btn;
-    Button current_location_btn;
     int current_fragment;
     GeoInfoService gis;
     GeoInfoServiceConnection gisc;
@@ -60,6 +58,13 @@ public class CityInfoActivity extends FragmentActivity {
             Location.distanceBetween(latitude, longitude, city.getGeoPosition().latitude, city.getGeoPosition().longitude, results);
         }
         distance = results[0];
+        if(distance == Float.MAX_VALUE
+                || distance == Float.MIN_VALUE
+                || distance == Float.POSITIVE_INFINITY
+                || distance == Float.NEGATIVE_INFINITY
+                || distance == Float.NaN) {
+            distance = 0;
+        }
         initFragments();
         gisc = new GeoInfoServiceConnection();
 
@@ -103,13 +108,6 @@ public class CityInfoActivity extends FragmentActivity {
             public void onClick(View v) {
                 DrawerLayout dl = (DrawerLayout)findViewById(R.id.drawer_layout);
                 dl.openDrawer(Gravity.LEFT);
-            }
-        });
-
-        current_location_btn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                gis.setCurrentLocation(city.getGeoPosition());
             }
         });
     }
@@ -177,5 +175,9 @@ public class CityInfoActivity extends FragmentActivity {
         public void onServiceDisconnected(ComponentName name) {
 
         }
+    }
+
+    public GeoInfoService getService() {
+        return gis;
     }
 }

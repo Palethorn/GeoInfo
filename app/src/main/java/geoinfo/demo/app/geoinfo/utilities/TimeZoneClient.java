@@ -12,8 +12,8 @@ import com.loopj.android.http.RequestParams;
  */
 public class TimeZoneClient {
     public static final String TAG = "TimeZoneClient";
-    public static final String KEY = "AIzaSyAry-Kzs8Kbfkkcqb2vG0G_G5BKIIfzxfg";
     public static final String URL = "https://maps.googleapis.com/maps/api/timezone/json";
+    public static String KEY;
 
     private AsyncHttpClient client = new AsyncHttpClient();
 

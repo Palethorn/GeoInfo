@@ -6,9 +6,11 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
 
 import geoinfo.demo.app.geoinfo.R;
+import geoinfo.demo.app.geoinfo.activities.CityInfoActivity;
 import geoinfo.demo.app.geoinfo.models.City;
 
 /**
@@ -22,6 +24,7 @@ public class CityInfoFragment extends Fragment {
     TextView country;
     TextView timezone;
     TextView air_distance;
+    Button current_location_btn;
     float distance;
 
     @Override
@@ -43,10 +46,11 @@ public class CityInfoFragment extends Fragment {
         country = (TextView)rootView.findViewById(R.id.city_country);
         timezone = (TextView)rootView.findViewById(R.id.city_timezone);
         air_distance = (TextView)rootView.findViewById(R.id.city_air_distance);
+        current_location_btn = (Button)rootView.findViewById(R.id.current_location_btn);
         return rootView;
     }
 
-    public void updateInfo(City city) {
+    public void updateInfo(final City city) {
         if (city == null) {
             return;
         }
@@ -55,5 +59,15 @@ public class CityInfoFragment extends Fragment {
         country.setText("City Country: " + city.getCountryName());
         air_distance.setText("Air distance: " + String.valueOf(distance) + " meters");
         timezone.setText("Timezone: " + city.getTimezone());
+
+        current_location_btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                CityInfoActivity cia = (CityInfoActivity)getActivity();
+                if (cia.getService() != null) {
+                    cia.getService().setCurrentLocation(city.getGeoPosition());
+                }
+            }
+        });
     }
 }

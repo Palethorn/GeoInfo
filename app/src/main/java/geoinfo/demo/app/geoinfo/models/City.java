@@ -23,13 +23,14 @@ public class City implements Parcelable {
     }
 
     public City(Parcel p) {
-        String[] s = new String[6];
+        String[] s = new String[7];
         p.readStringArray(s);
         name = s[0];
         id = s[1];
         geo_position = new LatLng(Double.valueOf(s[2]), Double.valueOf(s[3]));
         country_code = s[4];
         country_name = s[5];
+        timezone = s[6];
     }
 
     public String getName() {
@@ -85,7 +86,8 @@ public class City implements Parcelable {
                 String.valueOf(geo_position.latitude),
                 String.valueOf(geo_position.longitude),
                 country_code,
-                country_name
+                country_name,
+                timezone
         });
     }
 
