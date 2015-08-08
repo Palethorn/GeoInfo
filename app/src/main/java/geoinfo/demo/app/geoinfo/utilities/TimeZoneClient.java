@@ -22,7 +22,6 @@ public class TimeZoneClient {
         rp.put("location", location.latitude + "," + location.longitude);
         rp.put("key", KEY);
         rp.put("timestamp", System.currentTimeMillis() / 1000);
-        Log.d(TAG, "Retrieving city information: " + URL + rp.toString());
         client.get(URL, rp, responseHandler);
     }
 }

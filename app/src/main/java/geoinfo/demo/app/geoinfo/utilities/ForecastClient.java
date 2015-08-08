@@ -24,7 +24,6 @@ public class ForecastClient {
         rp.put("cnt", count);
         rp.put("mode", "json");
         rp.put("units", "metric");
-        Log.d(TAG, "Retrieving weather information: " + URL + rp.toString());
         client.get(URL, rp, responseHandler);
     }
 }

@@ -36,7 +36,6 @@ public class CityInfoFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        Log.d(TAG, "OnCreateView");
         distance = getArguments().getFloat("distance");
 
         View rootView = inflater.inflate(

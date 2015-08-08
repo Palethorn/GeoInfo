@@ -15,7 +15,6 @@ public class CityListClient {
     private AsyncHttpClient client = new AsyncHttpClient();
 
     public void get(AsyncHttpResponseHandler responseHandler) {
-        Log.d(TAG, "Retrieving city information: " + URL);
         client.get(URL, null, responseHandler);
     }
 }

@@ -23,7 +23,6 @@ public class WeatherClient {
         rp.put("lon", city.getGeoPosition().longitude);
         rp.put("mode", "json");
         rp.put("units", "metric");
-        Log.d(TAG, "Retrieving weather information: " + URL + rp.toString());
         client.get(URL, rp, responseHandler);
     }
 }

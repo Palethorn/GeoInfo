@@ -295,7 +295,7 @@ public class GeoInfoService extends Service implements LocationListener {
                 return null;
             }
             total = array.length();
-            for (int i = 0; i < 100 /*array.length()*/; i++) {
+            for (int i = 0; i < array.length(); i++) {
                 if(isCancelled()) {
                     return null;
                 }

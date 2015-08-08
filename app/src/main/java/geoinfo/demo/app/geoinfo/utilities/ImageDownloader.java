@@ -35,7 +35,6 @@ public class ImageDownloader extends AsyncTask<Weather, Void, Bitmap> {
     protected Bitmap doInBackground(Weather... params) {
         DefaultHttpClient client = new DefaultHttpClient();
         HttpGet get = new HttpGet(URL + "/" + w.getIcon() + ".png");
-        Log.d("ImageDownloader", URL + "/" + w.getIcon());
         try {
             HttpResponse response = client.execute(get);
             HttpEntity entity = response.getEntity();

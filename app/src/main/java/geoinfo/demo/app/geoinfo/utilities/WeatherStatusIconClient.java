@@ -1,8 +1,5 @@
 package geoinfo.demo.app.geoinfo.utilities;
 
-import android.media.Image;
-import android.util.Log;
-import android.widget.ImageView;
 
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
@@ -19,7 +16,6 @@ public class WeatherStatusIconClient {
 
     public void get(Weather w, AsyncHttpResponseHandler responseHandler) {
         String url = URL + "/" + w.getIcon() + ".png";
-        Log.d(TAG, "Retrieving weather information: " + url);
         client.get(url, null, responseHandler);
     }
 }
