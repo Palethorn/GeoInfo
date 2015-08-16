@@ -252,7 +252,7 @@ public class GeoInfoService extends Service implements LocationListener {
                     offset = offset / 60 / 60;
                     GeoInfoService.this.city.setTimezone("GMT " + (offset < 0 ? "" : "+") + String.valueOf(offset));
                 } catch (JSONException e) {
-                    GeoInfoService.this.city.setTimezone("Could not retrieve");
+                    GeoInfoService.this.city.setTimezone("Not available");
                     e.printStackTrace();
                 }
                 checkJobs();
@@ -317,6 +317,9 @@ public class GeoInfoService extends Service implements LocationListener {
                 if (addresses != null && addresses.size() > 0) {
                     city.setCountryName(addresses.get(0).getCountryName());
                     city.setCountryCode(addresses.get(0).getCountryCode());
+                } else {
+                    city.setCountryName("Not available");
+                    city.setCountryCode("Not available");
                 }
                 if(!isCancelled()) {
                     cities.put(city.getId(), city);
